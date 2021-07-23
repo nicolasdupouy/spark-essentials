@@ -18,7 +18,7 @@ object DataSources extends App {
     StructField("Horsepower", LongType),
     StructField("Weight_in_lbs", LongType),
     StructField("Acceleration", DoubleType),
-    StructField("Year", StringType),
+    StructField("Year", DateType),
     StructField("Origin", StringType)
   ))
 
@@ -57,4 +57,84 @@ object DataSources extends App {
     .format("json")
     .mode(SaveMode.Overwrite)
     .save("src/main/resources/data/cars_dupe.json")
+
+  // JSON flags
+  spark.read
+    .schema(carsSchema)
+    .option("dateFormat", "YYYY-MM-dd") // couple with schema; if Spark fails parsing, it will put null
+    .option("allowSingleQuotes", "true")
+    .option("compression", "uncompressed") // "bzip2", "gzip", "lz4", "snappy", "deflate" or "uncompressed" (default)
+    .json("src/main/resources/data/cars_dupe.json")
+
+  // CSV flags
+  val stocksSchema = StructType(Array(
+    StructField("symbol", StringType),
+    StructField("date", DateType),
+    StructField("price", DoubleType)
+  ))
+
+  spark.read
+    .schema(stocksSchema)
+    .option("dateFormat", "MMM dd YYYY")
+    .option("header", "true") // Ignore the first row
+    .option("sep", ",")
+    .option("nullValue", "")
+    .csv("src/main/resources/data/stocks.csv")
+
+  // Parquet
+  carsDF.write
+    .mode(SaveMode.Overwrite)
+    .parquet("src/main/resources/data/cars.parquet")
+
+  // Text files
+  spark.read.text("src/main/resources/data/sampletextFile.txt").show()
+
+  // Reading from a remote DB
+  val employeesDF = spark.read
+    .format("jdbc")
+    .option("driver", "org.postgresql.Driver")
+    .option("url", "jdbc:postgresql://localhost:5432/rtjvm")
+    .option("user", "docker")
+    .option("password", "docker")
+    .option("dbtable", "public.employees")
+    .load()
+
+  employeesDF.show()
+
+  /**
+    * Exercise: read the movie DF, then write it as
+    *  - a tab-separated values file
+    *  - snappy Parquet
+    *  - table "public.movies" in the Postgres DB
+    */
+
+  val moviesDF = spark.read.json("src/main/resources/data/movies.json")
+
+  // TSV
+  moviesDF.write
+    .option("header", "true")
+    .option("sep", "\t")
+    .mode(SaveMode.Overwrite)
+    .csv("src/main/resources/data/exercice-movies.csv")
+
+  // Parquet
+  moviesDF.write.save("src/main/resources/data/exercice-movies.parquet")
+
+  private val driver = "org.postgresql.Driver"
+  private val url = "jdbc:postgresql://localhost:5432/rtjvm"
+  private val user = "docker"
+  private val password = "docker"
+  private val table = "public.movies"
+
+  moviesDF.write
+    .format("jdbc")
+    .option("driver", driver)
+    .option("url", url)
+    .option("user", user)
+    .option("password", password)
+    .option("dbtable", table)
+    //.jdbc("jdbc:postgresql://localhost:5432/rtjvm", "public.movies")
+    .save()
+
+  moviesDF.show()
 }
