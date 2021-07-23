@@ -2,6 +2,7 @@ package part2dataframes
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, column, expr}
+import part2dataframes.ColumnsAndExpressions.movies2ColumnsDataFrames
 
 object ColumnsAndExpressions extends App {
 
@@ -21,7 +22,9 @@ object ColumnsAndExpressions extends App {
   val carNamesDF = carsDF.select(firstColumn)
 
   // various select methods
+
   import spark.implicits._
+
   carsDF.select(
     carsDF.col("Name"),
     col("Acceleration"),
@@ -79,6 +82,70 @@ object ColumnsAndExpressions extends App {
 
   // distinct values
   val allCountriesDF = carsDF.select("Origin").distinct()
-  allCountriesDF.show()
+  //allCountriesDF.show()
 
+  /**
+    * Exercices
+    *
+    * 1. Read the movies DF and select 2 columns of your choice
+    * 2. Create another column summing up the total profit of the movies = US_Gross + Worldwide_Gross + US_DVD_Sales
+    * 3. Select all Comedy movies where IMDB Rating above 6
+    *
+    * Use as many versions as possible
+    */
+  // 1.
+  val moviesDF = spark.read
+    .option("inferSchema", "true")
+    .json("src/main/resources/data/movies.json")
+  val movies2ColumnsDataFrames = moviesDF.select("Title", "Production_Budget")
+  val movies2ColumnsDataFrames2 = moviesDF.select(
+    'Title,
+    col("Production_Budget") as ("Production budget")
+  )
+  movies2ColumnsDataFrames.show()
+
+  // 2.
+  val moviesProfitDF = moviesDF.select(
+    col("Title"),
+    col("US_Gross"),
+    col("Worldwide_Gross"),
+    col("US_DVD_Sales"),
+    (col("US_Gross") + col("Worldwide_Gross")).as("Total_Gross")
+  )
+  moviesProfitDF.show()
+
+  val moviesProfitDF2 = moviesDF.selectExpr(
+    "Title",
+    "US_Gross",
+    "Worldwide_Gross",
+    "US_DVD_Sales",
+    "US_Gross + Worldwide_Gross as Total_Gross"
+  )
+  moviesProfitDF2.show()
+
+  val moviesProfitDF3 = moviesDF
+    .select("Title", "US_Gross", "Worldwide_Gross")
+    .withColumn("Total_Gross", col("US_Gross") + col("Worldwide_Gross"))
+  moviesProfitDF3.show()
+
+  // 3.
+  val comedyMoviesDF = moviesDF
+    .select("Title", "IMDB_Rating")
+    .where(col("Major_Genre") === "Comedy" and col("IMDB_Rating") > 6)
+  comedyMoviesDF.show()
+  println(s"Comedy movies number: ${comedyMoviesDF.count()}")
+
+  val comedyMoviesDF2 = moviesDF
+    .select("Title", "IMDB_Rating")
+    .where(col("Major_Genre") === "Comedy")
+    .where(col("IMDB_Rating") > 6)
+  comedyMoviesDF2.show()
+  println(s"Comedy movies number: ${comedyMoviesDF2.count()}")
+
+  val comedyMoviesDF3 = moviesDF
+    .select("Title", "IMDB_Rating")
+    .filter("Major_Genre = 'Comedy' and IMDB_Rating > 6")
+  comedyMoviesDF3.show()
+  println(s"Comedy movies number: ${comedyMoviesDF3.count()}")
+  //moviesDataFrames.show()
 }
