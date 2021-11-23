@@ -29,32 +29,35 @@ object Joins extends App {
 
   // Outer joins
   // Left outer join
+  // => everything in the inner join + all the rows in the LEFT table, with nulls in where the data is missing
   guitaristsDF.join(bandsDF, joinCondition, "left_outer") //.show()
 
   // Right outer join
+  // => everything in the inner join + all the rows in the RIGHT table, with nulls in where the data is missing
   guitaristsDF.join(bandsDF, joinCondition, "right_outer") //.show()
 
   // Full outer join
+  // => everything in the inner join + all the rows in BOTH table, with nulls in where the data is missing
   guitaristsDF.join(bandsDF, joinCondition, "outer") //.show() // or "full_outer"
 
   // semi-joins
+  // => everything in the left DF for which there is a row in the right DF satisfying the condition
   guitaristsDF.join(bandsDF, joinCondition, "left_semi") //.show()
-  // Equivalent to inner but without the columns on the right table
 
   // anti-joins
-  guitaristsDF.join(bandsDF, joinCondition, "left_anti")//.show()
-  // Equivalent to the semi-join but with the lines filtered (the opposite of the join condition)
+  // => everything in the left DF for which there is a NO row in the right DF satisfying the condition
+  guitaristsDF.join(bandsDF, joinCondition, "left_anti") //.show()
 
   // Things to bear in mind
   //guitaristsBandsDF.select("id", "band").show() // Ambiguous column
 
   // Option 1 - rename the column on which we are joining
-  guitaristsDF.join(bandsDF.withColumnRenamed("id", "band"))//.show()
+  guitaristsDF.join(bandsDF.withColumnRenamed("id", "band")) //.show()
   // Option 2 - drop the dupe column
-  guitaristsBandsDF.drop(bandsDF.col("id"))//.show()
+  guitaristsBandsDF.drop(bandsDF.col("id")) //.show()
   // Option 3 - rename the offending column and keep the data
-  val bandsModifiedDF = bandsDF.withColumnRenamed("id", "bandId")//.show()
-  guitaristsDF.join(bandsModifiedDF, guitaristsDF.col("band") === bandsModifiedDF.col("bandId"))//.show()
+  val bandsModifiedDF = bandsDF.withColumnRenamed("id", "bandId") //.show()
+  guitaristsDF.join(bandsModifiedDF, guitaristsDF.col("band") === bandsModifiedDF.col("bandId")) //.show()
 
   // Using complex types
   guitaristsDF.join(guitarsDF.withColumnRenamed("id", "guitarId"), expr("array_contains(guitars, guitarId)")).show()
