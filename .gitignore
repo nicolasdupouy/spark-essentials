@@ -203,3 +203,8 @@ spark-warehouse/
 
 
 # End of https://www.gitignore.io/api/sbt,scala,spark,intellij
+
+src/main/resources/data/cars.parquet/
+src/main/resources/data/cars_dupe.json/
+src/main/resources/data/movies.csv/
+src/main/resources/data/movies.parquet/

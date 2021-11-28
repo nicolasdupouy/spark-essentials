@@ -1,7 +1,8 @@
 package part2dataframes
 
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.catalyst.plans.Inner
+import org.apache.spark.sql.functions.{col, expr}
 
 object Joins extends App {
 
@@ -60,5 +61,39 @@ object Joins extends App {
   guitaristsDF.join(bandsModifiedDF, guitaristsDF.col("band") === bandsModifiedDF.col("bandId")) //.show()
 
   // Using complex types
-  guitaristsDF.join(guitarsDF.withColumnRenamed("id", "guitarId"), expr("array_contains(guitars, guitarId)")).show()
+  guitaristsDF.join(guitarsDF.withColumnRenamed("id", "guitarId"), expr("array_contains(guitars, guitarId)")) //.show()
+
+  /**
+   * Exercices
+   *
+   * 1. Show all employees and their max salary
+   */
+  // Reading from a remote DB
+  val driver = "org.postgresql.Driver"
+  val url = "jdbc:postgresql://localhost:5432/rtjvm"
+  val user = "docker"
+  val password = "docker"
+
+  def readTable(tableName: String): DataFrame = spark.read
+    .format("jdbc")
+    .option("driver", driver)
+    .option("url", url)
+    .option("user", user)
+    .option("password", password)
+    .option("dbtable", s"public.$tableName").load()
+
+  val salariesDF = readTable("salaries")
+  val employeesDF = readTable("employees")
+
+  // 1. Show all employees and their max salary
+  // Get the max salary for each employee
+  val maxSalaryByEmployeeDF = salariesDF
+    .groupBy(col("emp_no"))
+    .max("salary")
+
+  employeesDF.join(
+    maxSalaryByEmployeeDF,
+    employeesDF.col("emp_no") === maxSalaryByEmployeeDF.col("emp_no"),
+    Inner.sql)
+    .show()
 }
