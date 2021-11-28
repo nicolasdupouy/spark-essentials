@@ -1,8 +1,8 @@
 package part2dataframes
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.catalyst.plans.Inner
 import org.apache.spark.sql.functions.{col, expr}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object Joins extends App {
 
@@ -67,6 +67,7 @@ object Joins extends App {
    * Exercices
    *
    * 1. Show all employees and their max salary
+   * 2. Show all employees who were never managers
    */
   // Reading from a remote DB
   val driver = "org.postgresql.Driver"
@@ -84,6 +85,7 @@ object Joins extends App {
 
   val salariesDF = readTable("salaries")
   val employeesDF = readTable("employees")
+  val departmentManagerDF = readTable("dept_manager")
 
   // 1. Show all employees and their max salary
   // Get the max salary for each employee
@@ -96,4 +98,14 @@ object Joins extends App {
     employeesDF.col("emp_no") === maxSalaryByEmployeeDF.col("emp_no"),
     Inner.sql)
     .show()
+
+  // 2. Show all employees who were never managers
+  val employeesWhoWereNeverManagers = employeesDF.join(
+    departmentManagerDF,
+    employeesDF.col("emp_no") === departmentManagerDF.col("emp_no"),
+    "left_anti")
+    .select(col("first_name"), col("last_name"))
+    .orderBy(col("first_name"))
+  println(s"employees who were never managers: #${employeesWhoWereNeverManagers.count()}")
+  employeesWhoWereNeverManagers.show()
 }
