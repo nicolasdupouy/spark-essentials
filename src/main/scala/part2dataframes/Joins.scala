@@ -2,7 +2,7 @@ package part2dataframes
 
 import org.apache.spark.sql.catalyst.plans.Inner
 import org.apache.spark.sql.functions.{col, expr}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession, functions}
 
 object Joins extends App {
 
@@ -68,6 +68,7 @@ object Joins extends App {
    *
    * 1. Show all employees and their max salary
    * 2. Show all employees who were never managers
+   * 3. Find the job titles of the best paid 10 employees in the company
    */
   // Reading from a remote DB
   val driver = "org.postgresql.Driver"
@@ -86,18 +87,26 @@ object Joins extends App {
   val salariesDF = readTable("salaries")
   val employeesDF = readTable("employees")
   val departmentManagerDF = readTable("dept_manager")
+  val titlesDF = readTable("titles")
 
   // 1. Show all employees and their max salary
   // Get the max salary for each employee
   val maxSalaryByEmployeeDF = salariesDF
     .groupBy(col("emp_no"))
-    .max("salary")
+    .agg(functions.max("salary").as("maxSalary")) // Necessary if used in 3.
+    //.max("salary")
 
   employeesDF.join(
     maxSalaryByEmployeeDF,
     employeesDF.col("emp_no") === maxSalaryByEmployeeDF.col("emp_no"),
     Inner.sql)
     .show()
+  // OR
+  val employeesMaxSalariesDF = employeesDF.join(
+    maxSalaryByEmployeeDF,
+    "emp_no"
+  )
+  employeesMaxSalariesDF.show
 
   // 2. Show all employees who were never managers
   val employeesWhoWereNeverManagers = employeesDF.join(
@@ -108,4 +117,24 @@ object Joins extends App {
     .orderBy(col("first_name"))
   println(s"employees who were never managers: #${employeesWhoWereNeverManagers.count()}")
   employeesWhoWereNeverManagers.show()
+
+  // 3. Find the job titles of the best paid 10 employees in the company
+  // 10 best paid job titles
+  val mostPaidJobTitles = salariesDF.join(titlesDF,
+    salariesDF.col("emp_no") === titlesDF.col("emp_no"))
+    .groupBy(titlesDF.col("title"))
+    .agg(
+      functions.max("salary").as("Max_salary")
+    )
+    .orderBy(col("Max_salary") desc_nulls_last)
+    .limit(10)
+
+  mostPaidJobTitles.show(10)
+
+  // Job titles of the best paid 10 employees in the company
+  val mostRecentJobTitleDF = titlesDF.groupBy("emp_no").agg(functions.max("to_date"))
+  val bestPaidEmployeesDF = employeesMaxSalariesDF.orderBy(col("maxSalary").desc).limit(10)
+  val bestPaidJobsDF = bestPaidEmployeesDF.join(mostRecentJobTitleDF, "emp_no")
+
+  bestPaidJobsDF.show()
 }
